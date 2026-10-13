@@ -26,6 +26,15 @@ let lesson=document.getElementById('lesson').value;
 if(!lesson) return alert('اكتب اسم الدرس');
 document.getElementById('out').innerHTML='⏳ جاري توليد ورقة العمل + الشرح + التلخيص + الانفوجرافيك + الخريطة الذهنية + البطاقات...';
  // هنا بنادي الـ Backend
+ // بدل ما تعرض الـ error مباشرة، اعرض شرح تجريبي
+if (data.error && data.error.includes('429') || data.explanation && data.explanation.includes('credit')) {
+    explanation = `📚 شرح ${lesson} (وضع تجريبي):
+    1️⃣ نقرأ الدرس مع بعض
+    2️⃣ نفهم الفكرة بمثال بسيط
+    3️⃣ نطبق بحياتنا - مثال: 2+3=5`;
+} else {
+    explanation = data.explanation;
+}
  let res = await fetch('/api/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({lesson})});
  let data = await res.json();
  document.getElementById('out').innerHTML = `
