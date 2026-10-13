@@ -1,41 +1,48 @@
-from flask import Flask, request, jsonify
-import openai
+from flask import Flask, request, jsonify, send_from_directory
+import os
+from openai import OpenAI
 
-app = Flask(__name__)
-openai.api_key = "حط مفتاح OpenAI هون - sk-..."
+app = Flask(__name__, static_folder='.')
+
+# مفتاح OpenAI من متغير البيئة في Render
+client = None
+api_key = os.environ.get("OPENAI_API_KEY")
+if api_key:
+    client = OpenAI(api_key=api_key)
+
+@app.route('/')
+def home():
+    return send_from_directory('.', 'index.html')
 
 @app.route('/api/generate', methods=['POST'])
 def generate():
-    lesson = request.json['lesson']
-    
-    prompt = f"""
-    انت معلم أردني للصف الأول. ولد حزمة كاملة لدرس: {lesson}
-    المطلوب 6 أشياء بصيغة JSON:
-    1. worksheet: 5 تمارين جمع برسومات
-    2. explanation: كيف يشرح المعلم الدرس بـ 3 جمل
-    3. summary: تلخيص للطالب
-    4. infographic_prompt: وصف لصورة انفوجرافيك ل Midjourney
-    5. mindmap_text: نص الخريطة الذهنية
-    6. flashcards: 8 بطاقات جمع
-    """
-    
-    # هنا بنادي GPT-4
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role":"user", "content": prompt}]
-    )
-    
-    # وبعدين بنحول النص لـ PDF باستخدام reportlab
-    # ونرجع روابط التحميل
-    
+    data = request.get_json()
+    lesson = data.get('lesson', 'درس الجمع')
+
+    explanation = f"شرح مبسط لدرس {lesson} بثلاث خطوات عملية للأطفال."
+    summary = f"تلخيص درس {lesson}"
+
+    # اذا في مفتاح OpenAI، بنادي GPT
+    if client:
+        try:
+            prompt = f"انت معلم أردني للصف الأول. اكتب شرح مبسط جدا لدرس: {lesson} في 3 جمل قصيرة بالعربي."
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role":"user", "content": prompt}]
+            )
+            explanation = response.choices[0].message.content
+        except Exception as e:
+            explanation = f"شرح لدرس {lesson}: {str(e)}"
+
     return jsonify({
-        "worksheet": "/files/worksheet.pdf",
-        "summary": "/files/summary.pdf", 
-        "infographic": "/files/infographic.png",
-        "mindmap": "/files/mindmap.png",
-        "flashcards": "/files/flashcards.pdf",
-        "explanation": "شرح مبسط..."
+        "worksheet": "#",
+        "summary": "#",
+        "infographic": "#",
+        "mindmap": "#",
+        "flashcards": "#",
+        "explanation": explanation,
+        "summary_text": summary
     })
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host="0.0.0.0", port=10000)
