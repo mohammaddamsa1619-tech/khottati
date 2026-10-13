@@ -1,0 +1,5 @@
+flask
+openai
+reportlab
+openpyxl
+python-docx
